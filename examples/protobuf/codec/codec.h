@@ -32,6 +32,7 @@ class ProtobufCodec : muduo::noncopyable
 {
  public:
 
+  //in order to handle errors in decoding and encoding, 
   enum ErrorCode
   {
     kNoError = 0,
@@ -77,8 +78,12 @@ class ProtobufCodec : muduo::noncopyable
   }
 
   static const muduo::string& errorCodeToString(ErrorCode errorCode);
+
+  //进行打包，将message对象打包成buffer，交付给网络库（tcpConnection::Send()）发出去
   static void fillEmptyBuffer(muduo::net::Buffer* buf, const google::protobuf::Message& message);
+
   static google::protobuf::Message* createMessage(const std::string& type_name);
+
   static MessagePtr parse(const char* buf, int len, ErrorCode* errorCode);
 
  private:

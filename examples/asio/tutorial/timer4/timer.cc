@@ -10,7 +10,7 @@ class Printer : muduo::noncopyable
       count_(0)
   {
     // Note: loop.runEvery() is better for this use case.
-    loop_->runAfter(1, std::bind(&Printer::print, this));
+    loop_->runEvery(2, std::bind(&Printer::print, this));
   }
 
   ~Printer()
@@ -20,15 +20,13 @@ class Printer : muduo::noncopyable
 
   void print()
   {
-    if (count_ < 5)
+    if (count_ < 8)
     {
       std::cout << count_ << "\n";
       ++count_;
 
-      loop_->runAfter(1, std::bind(&Printer::print, this));
-    }
-    else
-    {
+      //loop_->runAfter(1, std::bind(&Printer::print, this));
+    }else{
       loop_->quit();
     }
   }

@@ -56,7 +56,8 @@ void Acceptor::handleRead()
 {
   loop_->assertInLoopThread();
   InetAddress peerAddr;
-  //FIXME loop until no more
+  //FIXME loop until no more、
+  // 返回了一个已连接套接字，
   int connfd = acceptSocket_.accept(&peerAddr);
   if (connfd >= 0)
   {

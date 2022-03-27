@@ -11,6 +11,8 @@
 #include <iostream>
 #include <stdio.h>
 
+#define ADD2NUM(x,y)  x+y
+
 using namespace muduo;
 using namespace muduo::net;
 
@@ -81,6 +83,8 @@ class LogClient : noncopyable
       codec_.send(connection_, logRecord_);
       logRecord_.clear_heartbeat();
       LOG_INFO << "Type message below:";
+      LOG_INFO << ADD2NUM(10, 20);
+
     }
     else
     {

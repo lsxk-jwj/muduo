@@ -17,7 +17,7 @@ class ChatClient : noncopyable
  public:
   ChatClient(EventLoop* loop, const InetAddress& serverAddr)
     : client_(loop, serverAddr, "ChatClient"),
-      codec_(std::bind(&ChatClient::onStringMessage, this, _1, _2, _3))
+      codec_(std::bind(&ChatClient::onStringMessage, this, _1, _2, _3))//仍然注册回调
   {
     client_.setConnectionCallback(
         std::bind(&ChatClient::onConnection, this, _1));
@@ -36,6 +36,7 @@ class ChatClient : noncopyable
     client_.disconnect();
   }
 
+  // 由main线程调用
   void write(const StringPiece& message)
   {
     MutexLockGuard lock(mutex_);
@@ -46,6 +47,7 @@ class ChatClient : noncopyable
   }
 
  private:
+  // 由eventLoop线程调用
   void onConnection(const TcpConnectionPtr& conn)
   {
     LOG_INFO << conn->localAddress().toIpPort() << " -> "
@@ -73,7 +75,7 @@ class ChatClient : noncopyable
   TcpClient client_;
   LengthHeaderCodec codec_;
   MutexLock mutex_;
-  TcpConnectionPtr connection_ GUARDED_BY(mutex_);
+  TcpConnectionPtr connection_ GUARDED_BY(mutex_); //当网络库建立好连接时，会返回conn对象，保存在connection_中！
 };
 
 int main(int argc, char* argv[])

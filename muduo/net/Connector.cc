@@ -215,7 +215,7 @@ void Connector::retry(int sockfd)
     LOG_INFO << "Connector::retry - Retry connecting to " << serverAddr_.toIpPort()
              << " in " << retryDelayMs_ << " milliseconds. ";
     loop_->runAfter(retryDelayMs_/1000.0,
-                    std::bind(&Connector::startInLoop, shared_from_this()));
+                    std::bind(&Connector::startInLoop, shared_from_this()));//construct a shared_pointer that  points to *this!
     retryDelayMs_ = std::min(retryDelayMs_ * 2, kMaxRetryDelayMs);
   }
   else

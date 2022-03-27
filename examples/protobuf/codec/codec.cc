@@ -150,11 +150,13 @@ void ProtobufCodec::onMessage(const TcpConnectionPtr& conn,
       MessagePtr message = parse(buf->peek()+kHeaderLen, len, &errorCode);
       if (errorCode == kNoError && message)
       {
+        //每正确解析一个包，就调用一次用户自定义的messageCallback
         messageCallback_(conn, message, receiveTime);
         buf->retrieve(kHeaderLen+len);
       }
       else
       {
+        //解析出错
         errorCallback_(conn, buf, receiveTime, errorCode);
         break;
       }
@@ -166,6 +168,7 @@ void ProtobufCodec::onMessage(const TcpConnectionPtr& conn,
   }
 }
 
+//实现反射的函数，根据typeName生成对应的Message对象
 google::protobuf::Message* ProtobufCodec::createMessage(const std::string& typeName)
 {
   google::protobuf::Message* message = NULL;

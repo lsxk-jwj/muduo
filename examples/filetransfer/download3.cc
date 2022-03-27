@@ -31,6 +31,8 @@ void onConnection(const TcpConnectionPtr& conn)
     FILE* fp = ::fopen(g_file, "rb");
     if (fp)
     {
+      //通过自定义deleter使智能指针自动管理fp的生命周期，与TcpConnection的一样长！
+      //这是因为fp以传递引用的方式传递给TcpConnection里的context_,而context_与TcpConnection是同生命周期的！
       FilePtr ctx(fp, ::fclose);
       conn->setContext(ctx);
       char buf[kBufSize];

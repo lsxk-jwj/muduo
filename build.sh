@@ -1,4 +1,5 @@
 #!/bin/sh
+# this is a shell script! includes some commands of make and build to make it more convenient!
 
 set -x
 

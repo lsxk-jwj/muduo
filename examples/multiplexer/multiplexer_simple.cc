@@ -21,21 +21,22 @@ const uint16_t kClientPort = 3333;
 const char* backendIp = "127.0.0.1";
 const uint16_t kBackendPort = 9999;
 
-class MultiplexServer : noncopyable
+//单线程版本的proxyServer
+class ProxyServer : noncopyable
 {
  public:
-  MultiplexServer(EventLoop* loop, const InetAddress& listenAddr, const InetAddress& backendAddr)
-    : server_(loop, listenAddr, "MultiplexServer"),
+  ProxyServer(EventLoop* loop, const InetAddress& listenAddr, const InetAddress& backendAddr)
+    : server_(loop, listenAddr, "ProxyServer"),
       backend_(loop, backendAddr, "MultiplexBackend")
   {
     server_.setConnectionCallback(
-        std::bind(&MultiplexServer::onClientConnection, this, _1));
+        std::bind(&ProxyServer::onClientConnection, this, _1));
     server_.setMessageCallback(
-        std::bind(&MultiplexServer::onClientMessage, this, _1, _2, _3));
+        std::bind(&ProxyServer::onClientMessage, this, _1, _2, _3));
     backend_.setConnectionCallback(
-        std::bind(&MultiplexServer::onBackendConnection, this, _1));
+        std::bind(&ProxyServer::onBackendConnection, this, _1));
     backend_.setMessageCallback(
-        std::bind(&MultiplexServer::onBackendMessage, this, _1, _2, _3));
+        std::bind(&ProxyServer::onBackendMessage, this, _1, _2, _3));
     backend_.enableRetry();
   }
 
@@ -260,7 +261,7 @@ int main(int argc, char* argv[])
     backendIp = argv[1];
   }
   InetAddress backendAddr(backendIp, kBackendPort);
-  MultiplexServer server(&loop, listenAddr, backendAddr);
+  ProxyServer server(&loop, listenAddr, backendAddr);
 
   server.start();
 

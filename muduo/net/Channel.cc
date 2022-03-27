@@ -63,6 +63,7 @@ void Channel::remove()
   loop_->removeChannel(this);
 }
 
+
 void Channel::handleEvent(Timestamp receiveTime)
 {
   std::shared_ptr<void> guard;
@@ -80,6 +81,7 @@ void Channel::handleEvent(Timestamp receiveTime)
   }
 }
 
+// 是核心函数: call the callbacks 
 void Channel::handleEventWithGuard(Timestamp receiveTime)
 {
   eventHandling_ = true;

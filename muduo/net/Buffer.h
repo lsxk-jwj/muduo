@@ -74,6 +74,7 @@ class Buffer : public muduo::copyable
   size_t prependableBytes() const
   { return readerIndex_; }
 
+  //返回值是可读数据的首字节地址！
   const char* peek() const
   { return begin() + readerIndex_; }
 
@@ -179,6 +180,7 @@ class Buffer : public muduo::copyable
     append(str.data(), str.size());
   }
 
+  // 从data所指向的某一字节位置开始，往后一共len个字节的数据将会copy过来！
   void append(const char* /*restrict*/ data, size_t len)
   {
     ensureWritableBytes(len);
@@ -410,6 +412,8 @@ class Buffer : public muduo::copyable
 
  private:
   std::vector<char> buffer_;
+  //这两个位置都是整数下标而不是指针，因为buffer_会因为重新分配内存位置而导致指针失效！
+  //这两个位置都是相对于buffer::begin()的相对位置。
   size_t readerIndex_;
   size_t writerIndex_;
 

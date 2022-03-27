@@ -24,40 +24,44 @@ const uint16_t kClientPort = 3333;
 const char* backendIp = "127.0.0.1";
 const uint16_t kBackendPort = 9999;
 
-class MultiplexServer
+// 如同一个proxyServer: 接入层负责串并转换。
+// 多线程版本的，指的是多个线程，每个线程里一个eventloop，这是muduo网络库的功能。
+// 真正的应用中，这里的ProxyServer单点（单进程）式的肯定不行，需要跑着多个proxyServer进程即分布式的服务进程，还要有着负载均衡和数据一致性管理的功能！
+class ProxyServer
 {
  public:
-  MultiplexServer(EventLoop* loop,
+  //server_和backend_共用一个 loop 就可以！
+  ProxyServer(EventLoop* loop,
                   const InetAddress& listenAddr,
                   const InetAddress& backendAddr,
                   int numThreads)
-    : server_(loop, listenAddr, "MultiplexServer"),
+    : server_(loop, listenAddr, "ProxyServer"),
       backend_(loop, backendAddr, "MultiplexBackend"),
       numThreads_(numThreads),
       oldCounter_(0),
       startTime_(Timestamp::now())
   {
     server_.setConnectionCallback(
-        std::bind(&MultiplexServer::onClientConnection, this, _1));
+        std::bind(&ProxyServer::onClientConnection, this, _1));
     server_.setMessageCallback(
-        std::bind(&MultiplexServer::onClientMessage, this, _1, _2, _3));
+        std::bind(&ProxyServer::onClientMessage, this, _1, _2, _3));
     server_.setThreadNum(numThreads);
 
     backend_.setConnectionCallback(
-        std::bind(&MultiplexServer::onBackendConnection, this, _1));
+        std::bind(&ProxyServer::onBackendConnection, this, _1));
     backend_.setMessageCallback(
-        std::bind(&MultiplexServer::onBackendMessage, this, _1, _2, _3));
+        std::bind(&ProxyServer::onBackendMessage, this, _1, _2, _3));
     backend_.enableRetry();
 
-    // loop->runEvery(10.0, std::bind(&MultiplexServer::printStatistics, this));
+    // loop->runEvery(10.0, std::bind(&ProxyServer::printStatistics, this));
 
   }
 
   void start()
   {
     LOG_INFO << "starting " << numThreads_ << " threads.";
-    backend_.connect();
-    server_.start();
+    backend_.connect();//向后端发起连接
+    server_.start();//向前端提供服务
   }
 
  private:
@@ -279,7 +283,9 @@ class MultiplexServer
   }
 
   TcpServer server_;
-  TcpClient backend_;
+
+  TcpClient backend_;//backend_是tcpclient的定位！
+
   int numThreads_;
   AtomicInt64 transferred_;
   AtomicInt64 receivedMessages_;
@@ -301,12 +307,12 @@ int main(int argc, char* argv[])
   }
   if (argc > 2)
   {
-    numThreads = atoi(argv[2]);
+    numThreads = ::atoi(argv[2]);
   }
   EventLoop loop;
   InetAddress listenAddr(kClientPort);
   InetAddress backendAddr(backendIp, kBackendPort);
-  MultiplexServer server(&loop, listenAddr, backendAddr, numThreads);
+  ProxyServer server(&loop, listenAddr, backendAddr, numThreads);
 
   server.start();
 

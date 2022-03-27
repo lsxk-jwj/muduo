@@ -18,6 +18,8 @@
 
 typedef std::shared_ptr<google::protobuf::Message> MessagePtr;
 
+
+//分配器的第一种设计方案
 class ProtobufDispatcherLite : muduo::noncopyable
 {
  public:

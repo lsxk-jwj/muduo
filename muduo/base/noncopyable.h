@@ -4,6 +4,7 @@
 namespace muduo
 {
 
+//classes derived from this: copy is forbidden 
 class noncopyable
 {
  public:
@@ -12,6 +13,8 @@ class noncopyable
 
  protected:
   noncopyable() = default;
+
+  //should be virtual destructor
   ~noncopyable() = default;
 };
 

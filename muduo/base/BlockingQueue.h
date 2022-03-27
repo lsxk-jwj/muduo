@@ -15,6 +15,7 @@
 namespace muduo
 {
 
+// this implementation of blockingqueue is very similar and simple
 template<typename T>
 class BlockingQueue : noncopyable
 {
@@ -32,7 +33,7 @@ class BlockingQueue : noncopyable
   {
     MutexLockGuard lock(mutex_);
     queue_.push_back(x);
-    notEmpty_.notify(); // wait morphing saves us
+    notEmpty_.notify(); // wait morphing saves us. here chenshuo uses condition varible, also the eventfd is also available.
     // http://www.domaigne.com/blog/computing/condvars-signal-with-mutex-locked-or-not/
   }
 

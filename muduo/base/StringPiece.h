@@ -66,6 +66,7 @@ class StringArg // copyable
   const char* str_;
 };
 
+//从google借鉴而来，提供了统一的接口，避免了需要重载const char* 和 const std::string&
 class StringPiece {
  private:
   const char*   ptr_;

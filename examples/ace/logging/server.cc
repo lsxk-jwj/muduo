@@ -8,6 +8,8 @@
 #include "muduo/net/protobuf/ProtobufCodecLite.h"
 
 #include <stdio.h>
+#include <chrono>
+
 
 using namespace muduo;
 using namespace muduo::net;
@@ -84,8 +86,15 @@ class LogServer : noncopyable
     : loop_(loop),
       server_(loop_, listenAddr, "AceLoggingServer")
   {
+    // register the callback function in constructor
     server_.setConnectionCallback(
-        std::bind(&LogServer::onConnection, this, _1));
+        //std::bind(&LogServer::onConnection, this, _1)
+        //use the lambda is better, get "this" pointer by value by default!
+        
+        [=](auto&& conn){
+          onConnection(std::forward<decltype(conn)> (conn));
+        }
+        );
     if (numThreads > 1)
     {
       server_.setThreadNum(numThreads);
@@ -121,6 +130,9 @@ int main(int argc, char* argv[])
 {
   EventLoop loop;
   int port = argc > 1 ? atoi(argv[1]) : 50000;
+  
+  LOG_INFO << "now time is "<< time(0);
+
   LOG_INFO << "Listen on port " << port;
   InetAddress listenAddr(static_cast<uint16_t>(port));
   int numThreads = argc > 2 ? atoi(argv[2]) : 1;

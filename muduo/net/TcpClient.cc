@@ -129,6 +129,7 @@ void TcpClient::stop()
   connector_->stop();
 }
 
+// 此函数实现和TcpServer很像，所以TcpClient 和 Tcpserver 都拥有Tcpconnection成员！
 void TcpClient::newConnection(int sockfd)
 {
   loop_->assertInLoopThread();
@@ -139,13 +140,21 @@ void TcpClient::newConnection(int sockfd)
   string connName = name_ + buf;
 
   InetAddress localAddr(sockets::getLocalAddr(sockfd));
+
   // FIXME poll with zero timeout to double confirm the new connection
   // FIXME use make_shared if necessary
-  TcpConnectionPtr conn(new TcpConnection(loop_,
+
+  // conn必须使用堆内存，因为生命周期要长于这个函数！
+  // TcpConnectionPtr conn(new TcpConnection(loop_,
+  //                                         connName,
+  //                                         sockfd,
+  //                                         localAddr,
+  //                                         peerAddr));
+  auto conn = std::make_shared<TcpConnection> (loop_,
                                           connName,
                                           sockfd,
                                           localAddr,
-                                          peerAddr));
+                                          peerAddr);
 
   conn->setConnectionCallback(connectionCallback_);
   conn->setMessageCallback(messageCallback_);

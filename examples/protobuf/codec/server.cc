@@ -13,12 +13,16 @@
 using namespace muduo;
 using namespace muduo::net;
 
+//Query Answer都是protobuf::message的派生类!
 typedef std::shared_ptr<muduo::Query> QueryPtr;
 typedef std::shared_ptr<muduo::Answer> AnswerPtr;
 
 class QueryServer : noncopyable
 {
  public:
+
+  // 这几个类之间的耦合都是通过回调函数实现的！
+  // 不同的成员去注册各自的回调函数，就是层层回调函数这个设计非常绕，需要理清楚！
   QueryServer(EventLoop* loop,
               const InetAddress& listenAddr)
   : server_(loop, listenAddr, "QueryServer"),
@@ -27,10 +31,13 @@ class QueryServer : noncopyable
   {
     dispatcher_.registerMessageCallback<muduo::Query>(
         std::bind(&QueryServer::onQuery, this, _1, _2, _3));
+
     dispatcher_.registerMessageCallback<muduo::Answer>(
         std::bind(&QueryServer::onAnswer, this, _1, _2, _3));
+
     server_.setConnectionCallback(
         std::bind(&QueryServer::onConnection, this, _1));
+
     server_.setMessageCallback(
         std::bind(&ProtobufCodec::onMessage, &codec_, _1, _2, _3));
   }
@@ -56,6 +63,7 @@ class QueryServer : noncopyable
     conn->shutdown();
   }
 
+  //query消息处理函数
   void onQuery(const muduo::net::TcpConnectionPtr& conn,
                const QueryPtr& message,
                muduo::Timestamp)
@@ -63,15 +71,16 @@ class QueryServer : noncopyable
     LOG_INFO << "onQuery:\n" << message->GetTypeName() << message->DebugString();
     Answer answer;
     answer.set_id(1);
-    answer.set_questioner("Chen Shuo");
+    answer.set_questioner("jing weijie");
     answer.set_answerer("blog.csdn.net/Solstice");
     answer.add_solution("Jump!");
     answer.add_solution("Win!");
-    codec_.send(conn, answer);
+    codec_.send(conn, answer);//使用codec_可以直接发送answer，codec_负责将其打包成为buffer。
 
     conn->shutdown();
   }
 
+  //answer消息处理函数
   void onAnswer(const muduo::net::TcpConnectionPtr& conn,
                 const AnswerPtr& message,
                 muduo::Timestamp)
@@ -90,6 +99,7 @@ int main(int argc, char* argv[])
   LOG_INFO << "pid = " << getpid();
   if (argc > 1)
   {
+    //eventloop对象不必是堆上对象，它的生命周期和线程一样长，创建eventloop对象的main线程就是IO线程！
     EventLoop loop;
     uint16_t port = static_cast<uint16_t>(atoi(argv[1]));
     InetAddress serverAddr(port);

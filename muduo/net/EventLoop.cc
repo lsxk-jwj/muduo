@@ -111,6 +111,8 @@ void EventLoop::loop()
   while (!quit_)
   {
     activeChannels_.clear();
+
+    //start the real looping, get the returned activeChannels
     pollReturnTime_ = poller_->poll(kPollTimeMs, &activeChannels_);
     ++iteration_;
     if (Logger::logLevel() <= Logger::TRACE)
@@ -118,6 +120,8 @@ void EventLoop::loop()
       printActiveChannels();
     }
     // TODO sort channel by priority
+
+    // handle event of every active channel
     eventHandling_ = true;
     for (Channel* channel : activeChannels_)
     {

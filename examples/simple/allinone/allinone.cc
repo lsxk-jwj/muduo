@@ -15,6 +15,9 @@ using namespace muduo::net;
 int main()
 {
   LOG_INFO << "pid = " << getpid();
+
+  //这5个server可以放在同一个loop里去,即一个进程实现了5个服务！
+  //只有这么一个EventLoop对象，栈对象就足够了！
   EventLoop loop;  // one loop shared by multiple servers
 
   ChargenServer chargenServer(&loop, InetAddress(2019));

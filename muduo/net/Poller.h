@@ -36,6 +36,7 @@ class Poller : noncopyable
   Poller(EventLoop* loop);
   virtual ~Poller();
 
+  /// 供eventloop对象调用的三个函数！
   /// Polls the I/O events.
   /// Must be called in the loop thread.
   virtual Timestamp poll(int timeoutMs, ChannelList* activeChannels) = 0;
@@ -48,6 +49,8 @@ class Poller : noncopyable
   /// Must be called in the loop thread.
   virtual void removeChannel(Channel* channel) = 0;
 
+
+
   virtual bool hasChannel(Channel* channel) const;
 
   static Poller* newDefaultPoller(EventLoop* loop);
@@ -58,6 +61,7 @@ class Poller : noncopyable
   }
 
  protected:
+  // 但poller并不拥有channel，即channel对象的生命期由他人负责，这也是指针应用的场景之一！
   typedef std::map<int, Channel*> ChannelMap;
   ChannelMap channels_;
 

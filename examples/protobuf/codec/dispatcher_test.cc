@@ -47,7 +47,9 @@ int main()
   GOOGLE_PROTOBUF_VERIFY_VERSION;
   test_down_pointer_cast();
 
-  ProtobufDispatcher dispatcher(onUnknownMessageType);
+  ProtobufDispatcher dispatcher(onUnknownMessageType);//注册默认的callback
+
+  //看起来有些奇怪的成员类型的模板函数！
   dispatcher.registerMessageCallback<muduo::Query>(onQuery);
   dispatcher.registerMessageCallback<muduo::Answer>(onAnswer);
 

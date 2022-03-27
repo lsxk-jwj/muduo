@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 3.10)
 
 project(muduo C CXX)
 
@@ -29,8 +29,8 @@ set(CXX_FLAGS
  -Wshadow
  -Wwrite-strings
  -march=native
- # -MMD
- -std=c++11
+ # -MMD enable c++17 
+ -std=c++17
  -rdynamic
  )
 if(CMAKE_BUILD_BITS EQUAL 32)

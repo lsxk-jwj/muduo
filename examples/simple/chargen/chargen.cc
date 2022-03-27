@@ -19,6 +19,8 @@ ChargenServer::ChargenServer(EventLoop* loop,
       std::bind(&ChargenServer::onConnection, this, _1));
   server_.setMessageCallback(
       std::bind(&ChargenServer::onMessage, this, _1, _2, _3));
+  
+  //多注册了这个回调函数，写操作完成后才会调用，因此如果对方不接受数据的话，写操作就完成不了，chargenServer也不会继续发送数据！
   server_.setWriteCompleteCallback(
       std::bind(&ChargenServer::onWriteComplete, this, _1));
   if (print)

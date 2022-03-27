@@ -40,6 +40,7 @@ class Channel : noncopyable
   ~Channel();
 
   void handleEvent(Timestamp receiveTime);
+
   void setReadCallback(ReadEventCallback cb)
   { readCallback_ = std::move(cb); }
   void setWriteCallback(EventCallback cb)
@@ -54,8 +55,10 @@ class Channel : noncopyable
   void tie(const std::shared_ptr<void>&);
 
   int fd() const { return fd_; }
+
   int events() const { return events_; }
   void set_revents(int revt) { revents_ = revt; } // used by pollers
+
   // int revents() const { return revents_; }
   bool isNoneEvent() const { return events_ == kNoneEvent; }
 
@@ -91,9 +94,9 @@ class Channel : noncopyable
   static const int kWriteEvent;
 
   EventLoop* loop_;
-  const int  fd_;
+  const int  fd_; // 故每个channel只负责一个fd上的事务处理！
   int        events_;
-  int        revents_; // it's the received event types of epoll or poll
+  int        revents_; // it's the received event types of epoll or poll: filled by epollPoller 
   int        index_; // used by Poller.
   bool       logHup_;
 

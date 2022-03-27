@@ -144,7 +144,7 @@ class CAPABILITY("mutex") MutexLock : noncopyable
     assert(isLockedByThisThread());
   }
 
-  // internal usage
+  // internal usage, not for client to call
 
   void lock() ACQUIRE()
   {
@@ -184,6 +184,7 @@ class CAPABILITY("mutex") MutexLock : noncopyable
     MutexLock& owner_;
   };
 
+  //this code style is design short function! inline function default!
   void unassignHolder()
   {
     holder_ = 0;

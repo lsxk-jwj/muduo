@@ -7,6 +7,7 @@
 // Author: Shuo Chen (chenshuo at chenshuo dot com)
 //
 // This is a public header file, it must only include public header files.
+// 很多回调函数如 connectionCallback messageCallback都是最终注册（存储）在TcpConnection里的！
 
 #ifndef MUDUO_NET_TCPCONNECTION_H
 #define MUDUO_NET_TCPCONNECTION_H
@@ -65,7 +66,9 @@ class TcpConnection : noncopyable,
   // void send(string&& message); // C++11
   void send(const void* message, int len);
   void send(const StringPiece& message);
-  // void send(Buffer&& message); // C++11
+  
+  void send(Buffer&& message); // C++11
+  
   void send(Buffer* message);  // this one will swap data
   void shutdown(); // NOT thread safe, no simultaneous calling
   // void shutdownAndForceCloseAfter(double seconds); // NOT thread safe, no simultaneous calling
@@ -135,7 +138,10 @@ class TcpConnection : noncopyable,
   const string name_;
   StateE state_;  // FIXME: use atomic variable
   bool reading_;
+
+
   // we don't expose those classes to client.
+  // 每个Tcpconnection管理的socket和channel
   std::unique_ptr<Socket> socket_;
   std::unique_ptr<Channel> channel_;
   const InetAddress localAddr_;

@@ -14,21 +14,27 @@
 
 #include <google/protobuf/message.h>
 
-#include <map>
+#include <unordered_map>
 
 #include <type_traits>
 
 typedef std::shared_ptr<google::protobuf::Message> MessagePtr;
 
+//这是一个抽象基类
 class Callback : muduo::noncopyable
 {
  public:
   virtual ~Callback() = default;
+
+  //对应着不同的message，onMessage设计为虚函数
   virtual void onMessage(const muduo::net::TcpConnectionPtr&,
                          const MessagePtr& message,
                          muduo::Timestamp) const = 0;
 };
 
+// 分发器的一种常见的设计手法，定义 模板派生类 去继承 抽象基类
+// 使用onMessage虚函数是因为：不同的派生类对象拥有着不同的message，于是对应着不同的ProtoMessageCallback！
+// 使用模板参数T是因为：通过模板推倒可以得到具体消息的类型即T，从而解决dynamic_cast<T>中T未知的问题！
 template <typename T>
 class CallbackT : public Callback
 {
@@ -43,19 +49,23 @@ class CallbackT : public Callback
     : callback_(callback)
   {
   }
-
+  
+  //真正的对应着特定message的特定callback！
   void onMessage(const muduo::net::TcpConnectionPtr& conn,
                  const MessagePtr& message,
                  muduo::Timestamp receiveTime) const override
   {
+
     std::shared_ptr<T> concrete = muduo::down_pointer_cast<T>(message);
-    assert(concrete != NULL);
+    assert(concrete != nullptr);
     callback_(conn, concrete, receiveTime);
   }
 
  private:
-  ProtobufMessageTCallback callback_;
+  ProtobufMessageTCallback callback_;//回调函数真正保存的位置！
 };
+
+//分配器的第二种设计方案: 根据不同的message类型区调用不同的回调函数（消息处理函数）！
 
 class ProtobufDispatcher
 {
@@ -73,7 +83,7 @@ class ProtobufDispatcher
                          const MessagePtr& message,
                          muduo::Timestamp receiveTime) const
   {
-    CallbackMap::const_iterator it = callbacks_.find(message->GetDescriptor());
+    auto it = callbacks_.find(message->GetDescriptor());
     if (it != callbacks_.end())
     {
       it->second->onMessage(conn, message, receiveTime);
@@ -83,7 +93,8 @@ class ProtobufDispatcher
       defaultCallback_(conn, message, receiveTime);
     }
   }
-
+  
+  //分配器含有一个模板函数，将用户自定义的不同类型的callback保存到映射表callbacks_
   template<typename T>
   void registerMessageCallback(const typename CallbackT<T>::ProtobufMessageTCallback& callback)
   {
@@ -92,10 +103,11 @@ class ProtobufDispatcher
   }
 
  private:
-  typedef std::map<const google::protobuf::Descriptor*, std::shared_ptr<Callback> > CallbackMap;
+  //这个映射表保存的是 基类指针 -> 基类指针 的映射！
+  typedef std::unordered_map<const google::protobuf::Descriptor*, std::shared_ptr<Callback> > CallbackMap;
 
-  CallbackMap callbacks_;
-  ProtobufMessageCallback defaultCallback_;
+  CallbackMap callbacks_; // 用户传进来的回调函数
+  ProtobufMessageCallback defaultCallback_;// 默认的回调函数
 };
 #endif  // MUDUO_EXAMPLES_PROTOBUF_CODEC_DISPATCHER_H
 

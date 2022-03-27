@@ -13,6 +13,7 @@ class EchoServer
   void start();  // calls server_.start();
 
  private:
+ //自己需要编写的回调函数！
   void onConnection(const muduo::net::TcpConnectionPtr& conn);
 
   void onMessage(const muduo::net::TcpConnectionPtr& conn,

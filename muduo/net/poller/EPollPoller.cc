@@ -38,7 +38,7 @@ const int kDeleted = 2;
 
 EPollPoller::EPollPoller(EventLoop* loop)
   : Poller(loop),
-    epollfd_(::epoll_create1(EPOLL_CLOEXEC)),
+    epollfd_(::epoll_create1(EPOLL_CLOEXEC)), // 创建epoll_fd
     events_(kInitEventListSize)
 {
   if (epollfd_ < 0)
@@ -52,9 +52,12 @@ EPollPoller::~EPollPoller()
   ::close(epollfd_);
 }
 
+// start the looping!
 Timestamp EPollPoller::poll(int timeoutMs, ChannelList* activeChannels)
 {
   LOG_TRACE << "fd total count " << channels_.size();
+
+  // 注册事件
   int numEvents = ::epoll_wait(epollfd_,
                                &*events_.begin(),
                                static_cast<int>(events_.size()),
@@ -64,6 +67,8 @@ Timestamp EPollPoller::poll(int timeoutMs, ChannelList* activeChannels)
   if (numEvents > 0)
   {
     LOG_TRACE << numEvents << " events happened";
+
+    //有事件发生了，填充actie_Channel
     fillActiveChannels(numEvents, activeChannels);
     if (implicit_cast<size_t>(numEvents) == events_.size())
     {
@@ -99,11 +104,15 @@ void EPollPoller::fillActiveChannels(int numEvents,
     assert(it != channels_.end());
     assert(it->second == channel);
 #endif
+
+    //fill the active event of this channel! 
     channel->set_revents(events_[i].events);
+    //fill active channels as the return params!
     activeChannels->push_back(channel);
   }
 }
 
+// undate the manage container: channels_, including add and modify and delete
 void EPollPoller::updateChannel(Channel* channel)
 {
   Poller::assertInLoopThread();

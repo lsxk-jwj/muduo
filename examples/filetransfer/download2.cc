@@ -13,7 +13,7 @@ void onHighWaterMark(const TcpConnectionPtr& conn, size_t len)
   LOG_INFO << "HighWaterMark " << len;
 }
 
-const int kBufSize = 64*1024;
+const int kBufSize = 64*1024;//固定大小的块！
 const char* g_file = NULL;
 
 void onConnection(const TcpConnectionPtr& conn)
@@ -30,10 +30,13 @@ void onConnection(const TcpConnectionPtr& conn)
     FILE* fp = ::fopen(g_file, "rb");
     if (fp)
     {
+      //调用了setContext 来保存当前tcp连接的上下文：在这里是FILE* fp, 以供下一次发送数据之前读取文件获取file指针！
+      //用了boost::any 的通用类型
       conn->setContext(fp);
       char buf[kBufSize];
       size_t nread = ::fread(buf, 1, sizeof buf, fp);
       conn->send(buf, static_cast<int>(nread));
+    
     }
     else
     {
@@ -56,6 +59,7 @@ void onConnection(const TcpConnectionPtr& conn)
 
 void onWriteComplete(const TcpConnectionPtr& conn)
 {
+  //再将其转换回来boost::any_cast<T>(param)
   FILE* fp = boost::any_cast<FILE*>(conn->getContext());
   char buf[kBufSize];
   size_t nread = ::fread(buf, 1, sizeof buf, fp);

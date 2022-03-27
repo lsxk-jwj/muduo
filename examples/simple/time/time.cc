@@ -28,6 +28,7 @@ void TimeServer::onConnection(const muduo::net::TcpConnectionPtr& conn)
            << (conn->connected() ? "UP" : "DOWN");
   if (conn->connected())
   {
+    //发送的是二进制的be32，
     time_t now = ::time(NULL);
     int32_t be32 = sockets::hostToNetwork32(static_cast<int32_t>(now));
     conn->send(&be32, sizeof be32);

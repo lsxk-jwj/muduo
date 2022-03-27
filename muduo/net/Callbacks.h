@@ -59,7 +59,7 @@ namespace net
 
 class Buffer;
 class TcpConnection;
-typedef std::shared_ptr<TcpConnection> TcpConnectionPtr;
+typedef std::shared_ptr<TcpConnection> TcpConnectionPtr;//use smarter point to manage the TcpConnection 
 typedef std::function<void()> TimerCallback;
 typedef std::function<void (const TcpConnectionPtr&)> ConnectionCallback;
 typedef std::function<void (const TcpConnectionPtr&)> CloseCallback;

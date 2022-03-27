@@ -11,6 +11,9 @@
 using namespace muduo;
 using namespace muduo::net;
 
+// 这是一个很好的分析需求 面向对象的开发任务学习示例！
+// hub是一个单独的服务进程，如同一个消息队列一般；而发布者与订阅者可以做成同样的程序
+
 namespace pubsub
 {
 
@@ -38,11 +41,14 @@ class Topic : public muduo::copyable
     audiences_.erase(conn);
   }
 
+  // 广播应该是topic的成员
   void publish(const string& content, Timestamp time)
   {
     content_ = content;
     lastPubTime_ = time;
     string message = makeMessage();
+    // 遍历容器来进行广播，非阻塞式的肯定也得遍历，但是这里的send函数是非阻塞的，交给网络库进行的数据收发！
+    // 还可以进一步使用多线程来提高广播效率（不能使用全局锁，否则就会退化为单线程执行了）
     for (std::set<TcpConnectionPtr>::iterator it = audiences_.begin();
          it != audiences_.end();
          ++it)
@@ -61,7 +67,7 @@ class Topic : public muduo::copyable
   string topic_;
   string content_;
   Timestamp lastPubTime_;
-  std::set<TcpConnectionPtr> audiences_;
+  std::set<TcpConnectionPtr> audiences_;//topic 自身保存订阅者的连接！
 };
 
 class PubSubServer : noncopyable
@@ -109,11 +115,14 @@ class PubSubServer : noncopyable
                  Timestamp receiveTime)
   {
     ParseResult result = kSuccess;
+
+    //使用while是因为：一个客户（发布者和订阅者均可）可以一次发送了多条指令！
     while (result == kSuccess)
     {
       string cmd;
       string topic;
       string content;
+      // 读取发布者或订阅者的数据并解析，这个函数就是一个简单的解析器（编解码器）。
       result = parseMessage(buf, &cmd, &topic, &content);
       if (result == kSuccess)
       {
@@ -149,6 +158,7 @@ class PubSubServer : noncopyable
     doPublish("internal", "utc_time", now.toFormattedString(), now);
   }
 
+  // 订阅者conn 和其订阅的主题topic
   void doSubscribe(const TcpConnectionPtr& conn,
                    const string& topic)
   {
@@ -178,9 +188,10 @@ class PubSubServer : noncopyable
     getTopic(topic).publish(content, time);
   }
 
+  // 所以要保存一个映射表
   Topic& getTopic(const string& topic)
   {
-    std::map<string, Topic>::iterator it = topics_.find(topic);
+    std::map<string, Topic>::iterator it = topics_.find(topic);//二分查找
     if (it == topics_.end())
     {
       it = topics_.insert(make_pair(topic, Topic(topic))).first;
@@ -190,7 +201,7 @@ class PubSubServer : noncopyable
 
   EventLoop* loop_;
   TcpServer server_;
-  std::map<string, Topic> topics_;
+  std::map<string, Topic> topics_;//含有多个topic
 };
 
 }  // namespace pubsub

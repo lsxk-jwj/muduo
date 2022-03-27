@@ -22,8 +22,8 @@ namespace muduo
 namespace net
 {
 
-///
-/// IO Multiplexing with epoll(4).
+/// handle the events transferred by the system call
+/// IO Multiplexing with epoll(4). 
 ///
 class EPollPoller : public Poller
 {
@@ -31,6 +31,7 @@ class EPollPoller : public Poller
   EPollPoller(EventLoop* loop);
   ~EPollPoller() override;
 
+  // called by eventLoop
   Timestamp poll(int timeoutMs, ChannelList* activeChannels) override;
   void updateChannel(Channel* channel) override;
   void removeChannel(Channel* channel) override;
@@ -47,7 +48,7 @@ class EPollPoller : public Poller
   typedef std::vector<struct epoll_event> EventList;
 
   int epollfd_;
-  EventList events_;
+  EventList events_; // 是一块缓冲区，由epoll_wait进行填充！
 };
 
 }  // namespace net

@@ -32,7 +32,7 @@ class Channel;
 class Poller;
 class TimerQueue;
 
-///
+/// eventloop需要独占一个线程：
 /// Reactor, at most one per thread.
 ///
 /// This is an interface class, so don't expose too much details.
@@ -76,9 +76,9 @@ class EventLoop : noncopyable
 
   size_t queueSize() const;
 
-  // timers
+  /// timers
 
-  ///
+  /// 线程安全的时间函数！
   /// Runs callback at 'time'.
   /// Safe to call from other threads.
   ///
@@ -113,6 +113,8 @@ class EventLoop : noncopyable
       abortNotInLoopThread();
     }
   }
+
+  //判断此函数的调用线程是否为eventloop对象所在的那个线程
   bool isInLoopThread() const { return threadId_ == CurrentThread::tid(); }
   // bool callingPendingFunctors() const { return callingPendingFunctors_; }
   bool eventHandling() const { return eventHandling_; }

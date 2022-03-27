@@ -89,6 +89,7 @@ void TcpConnection::send(const void* data, int len)
   send(StringPiece(static_cast<const char*>(data), len));
 }
 
+//send函数是如何做到线程安全的呢？
 void TcpConnection::send(const StringPiece& message)
 {
   if (state_ == kConnected)
@@ -99,6 +100,9 @@ void TcpConnection::send(const StringPiece& message)
     }
     else
     {
+      // 在这里实现的线程安全
+      // 如果TcpConnection::send()调用发生在别的线程(不是eventloop线程)， 它不会在当前线程调用sendInLoop()， 而是通过EventLoop::runInLoop()把sendInLoop()函数调用
+      // 转移到eventloop线程，这样sendInLoop()还是会在IO线程操作output buffer， 不会有线程安全问题。
       void (TcpConnection::*fp)(const StringPiece& message) = &TcpConnection::sendInLoop;
       loop_->runInLoop(
           std::bind(fp,
@@ -109,13 +113,14 @@ void TcpConnection::send(const StringPiece& message)
   }
 }
 
-// FIXME efficiency!!!
+// FIXME efficiency!!! 这里之前使用Buffer* 目的是为了避免内存拷贝，而现在可以用右值引用达到更好的效果！
 void TcpConnection::send(Buffer* buf)
 {
   if (state_ == kConnected)
   {
     if (loop_->isInLoopThread())
     {
+      //发送buf，发送完成后清空buf
       sendInLoop(buf->peek(), buf->readableBytes());
       buf->retrieveAll();
     }
@@ -131,11 +136,34 @@ void TcpConnection::send(Buffer* buf)
   }
 }
 
+// FIXME efficiency!!! 这里之前使用Buffer* 目的是为了避免内存拷贝，而现在可以用右值引用达到更好的效果！
+void TcpConnection::send(Buffer&& buf)
+{
+  if (state_ == kConnected)
+  {
+    if (loop_->isInLoopThread())
+    {
+      sendInLoop(buf.peek(), buf.readableBytes());
+      buf.retrieveAll();
+    }
+    else
+    {
+      void (TcpConnection::*fp)(const StringPiece& message) = &TcpConnection::sendInLoop;
+      loop_->runInLoop(
+          std::bind(fp,
+                    this,     // FIXME
+                    buf.retrieveAllAsString()));
+                    //std::forward<string>(message)));
+    }
+  }
+}
+
 void TcpConnection::sendInLoop(const StringPiece& message)
 {
   sendInLoop(message.data(), message.size());
 }
 
+//很重要的设计，非阻塞式的发送数据！
 void TcpConnection::sendInLoop(const void* data, size_t len)
 {
   loop_->assertInLoopThread();
@@ -198,6 +226,7 @@ void TcpConnection::shutdown()
   {
     setState(kDisconnecting);
     // FIXME: shared_from_this()?
+    // 这句就是在调用TcpConnection::shutdownInLoop，只不过是异步调用的，
     loop_->runInLoop(std::bind(&TcpConnection::shutdownInLoop, this));
   }
 }
@@ -386,6 +415,7 @@ void TcpConnection::handleWrite()
         if (state_ == kDisconnecting)
         {
           shutdownInLoop();
+          
         }
       }
     }
@@ -415,6 +445,7 @@ void TcpConnection::handleClose()
   channel_->disableAll();
 
   TcpConnectionPtr guardThis(shared_from_this());
+  //由网络库发起的回调函数就是这样的，connectionCallback_就是用户定义的回调函数！
   connectionCallback_(guardThis);
   // must be the last line
   closeCallback_(guardThis);

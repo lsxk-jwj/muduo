@@ -26,9 +26,9 @@ class Acceptor;
 class EventLoop;
 class EventLoopThreadPool;
 
-///
+/// TcpServer 既支持单线程也支持多线程（线程池实现的，是在eventLoopPool里实现的多线程）
 /// TCP server, supports single-threaded and thread-pool models.
-///
+/// 
 /// This is an interface class, so don't expose too much details.
 class TcpServer : noncopyable
 {
@@ -103,7 +103,10 @@ class TcpServer : noncopyable
   const string ipPort_;
   const string name_;
   std::unique_ptr<Acceptor> acceptor_; // avoid revealing Acceptor
+  //
   std::shared_ptr<EventLoopThreadPool> threadPool_;
+
+  //这里的callback对象是传递给new出来的TcpConnection对象的！
   ConnectionCallback connectionCallback_;
   MessageCallback messageCallback_;
   WriteCompleteCallback writeCompleteCallback_;
@@ -111,7 +114,8 @@ class TcpServer : noncopyable
   AtomicInt32 started_;
   // always in loop thread
   int nextConnId_;
-  ConnectionMap connections_;
+
+  ConnectionMap connections_;//TcpServer里管理的多个连接对象，用map保存！
 };
 
 }  // namespace net

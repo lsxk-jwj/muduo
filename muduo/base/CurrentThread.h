@@ -13,6 +13,8 @@ namespace muduo
 namespace CurrentThread
 {
   // internal
+  // global varibles using __thread 
+  
   extern __thread int t_cachedTid;
   extern __thread char t_tidString[32];
   extern __thread int t_tidStringLength;
