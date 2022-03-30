@@ -22,7 +22,8 @@ namespace muduo
 namespace net
 {
 
-/// handle the events transferred by the system call
+/// handle all the IO events managed by epoll.
+/// 
 /// IO Multiplexing with epoll(4). 
 ///
 class EPollPoller : public Poller

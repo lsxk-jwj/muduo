@@ -24,8 +24,11 @@ using namespace muduo::net;
 
 Acceptor::Acceptor(EventLoop* loop, const InetAddress& listenAddr, bool reuseport)
   : loop_(loop),
+
+    // this acceptSocket_(listenfd) and channel work together!
     acceptSocket_(sockets::createNonblockingOrDie(listenAddr.family())),
     acceptChannel_(loop, acceptSocket_.fd()),
+
     listening_(false),
     idleFd_(::open("/dev/null", O_RDONLY | O_CLOEXEC))
 {
@@ -33,6 +36,8 @@ Acceptor::Acceptor(EventLoop* loop, const InetAddress& listenAddr, bool reusepor
   acceptSocket_.setReuseAddr(true);
   acceptSocket_.setReusePort(reuseport);
   acceptSocket_.bindAddress(listenAddr);
+
+  //set the ChannelCallback
   acceptChannel_.setReadCallback(
       std::bind(&Acceptor::handleRead, this));
 }
@@ -57,15 +62,17 @@ void Acceptor::handleRead()
   loop_->assertInLoopThread();
   InetAddress peerAddr;
   //FIXME loop until no more、
-  // 返回了一个已连接套接字，
+  // 返回了一个已连接套接字，nonblocking
   int connfd = acceptSocket_.accept(&peerAddr);
   if (connfd >= 0)
   {
     // string hostport = peerAddr.toIpPort();
     // LOG_TRACE << "Accepts of " << hostport;
+
+    // callback the user defined function!
     if (newConnectionCallback_)
     {
-      newConnectionCallback_(connfd, peerAddr);
+      newConnectionCallback_(connfd, peerAddr); // pass connfd and peerAddr to user(in muduo, user is tcpserver)! connectted fd doesn't has a channel to work together!
     }
     else
     {

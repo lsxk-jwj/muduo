@@ -84,6 +84,10 @@ EventLoop::EventLoop()
   {
     t_loopInThisThread = this;
   }
+
+  // wakeupFd_(work with wakeupChannel_) is a eventfd, to wake up the loop to handle the callback passed by params in runInLoop()
+  // the way that muduo handles with eventfd_ and timerfd_ are different, it seems that codes are somehow not elegant! 
+  // because eventfd_ is used to do the function call transferred into the eventLoop thread!
   wakeupChannel_->setReadCallback(
       std::bind(&EventLoop::handleRead, this));
   // we are always reading the wakeupfd
@@ -130,6 +134,8 @@ void EventLoop::loop()
     }
     currentActiveChannel_ = NULL;
     eventHandling_ = false;
+
+    // the callbacks passed by runInLoop() do not handle in Channel.handleEvent(), but in here!  
     doPendingFunctors();
   }
 
@@ -137,6 +143,7 @@ void EventLoop::loop()
   looping_ = false;
 }
 
+// not terminate the process immediately until the next loop to check "while(!quit_)
 void EventLoop::quit()
 {
   quit_ = true;
@@ -161,16 +168,18 @@ void EventLoop::runInLoop(Functor cb)
   }
 }
 
+// queueInLoop and wakeup the epoll meanwhile!
+// think about how to make sure the thread safety!
 void EventLoop::queueInLoop(Functor cb)
 {
   {
-  MutexLockGuard lock(mutex_);
-  pendingFunctors_.push_back(std::move(cb));
+    MutexLockGuard lock(mutex_);
+    pendingFunctors_.push_back(std::move(cb)); // cb is a temparory variable, because cb is transferred by value!
   }
 
   if (!isInLoopThread() || callingPendingFunctors_)
   {
-    wakeup();
+    wakeup(); // call the doPendingFunctors() in Loop async!!!
   }
 }
 
@@ -202,6 +211,7 @@ void EventLoop::cancel(TimerId timerId)
   return timerQueue_->cancel(timerId);
 }
 
+// update the state of channel, implemented by poller_
 void EventLoop::updateChannel(Channel* channel)
 {
   assert(channel->ownerLoop() == this);
@@ -235,6 +245,7 @@ void EventLoop::abortNotInLoopThread()
             << ", current thread id = " <<  CurrentThread::tid();
 }
 
+// wake up the wakeupFd_
 void EventLoop::wakeup()
 {
   uint64_t one = 1;
@@ -255,14 +266,16 @@ void EventLoop::handleRead()
   }
 }
 
+// this function call may cost a lot of time.
 void EventLoop::doPendingFunctors()
 {
   std::vector<Functor> functors;
   callingPendingFunctors_ = true;
 
+  // swap is a good idea to avoid dead lock and improve effiency!
   {
-  MutexLockGuard lock(mutex_);
-  functors.swap(pendingFunctors_);
+    MutexLockGuard lock(mutex_);
+    functors.swap(pendingFunctors_);
   }
 
   for (const Functor& functor : functors)

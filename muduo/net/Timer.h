@@ -52,9 +52,9 @@ class Timer : noncopyable
   Timestamp expiration_;
   const double interval_;
   const bool repeat_;
-  const int64_t sequence_;
+  const int64_t sequence_; // every timer has a constant sequence number
 
-  static AtomicInt64 s_numCreated_;
+  static AtomicInt64 s_numCreated_; // must be a static member, use atomic avoiding the mutex!
 };
 
 }  // namespace net

@@ -14,6 +14,7 @@
 
 using namespace muduo::net;
 
+//a new heap object is constructed!
 Poller* Poller::newDefaultPoller(EventLoop* loop)
 {
   if (::getenv("MUDUO_USE_POLL"))

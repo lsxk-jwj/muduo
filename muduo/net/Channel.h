@@ -27,7 +27,7 @@ class EventLoop;
 ///
 /// A selectable I/O channel.
 ///
-/// This class doesn't own the file descriptor.
+/// This class doesn't own the file descriptor. But manage the fd
 /// The file descriptor could be a socket,
 /// an eventfd, a timerfd, or a signalfd
 class Channel : noncopyable

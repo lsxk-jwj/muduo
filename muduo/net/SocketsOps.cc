@@ -112,6 +112,7 @@ void sockets::listenOrDie(int sockfd)
   }
 }
 
+// RAII: listenfd and connfd are both required to set nonblocking!
 int sockets::accept(int sockfd, struct sockaddr_in6* addr)
 {
   socklen_t addrlen = static_cast<socklen_t>(sizeof *addr);

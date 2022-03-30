@@ -41,9 +41,14 @@ void EventLoopThreadPool::start(const ThreadInitCallback& cb)
   {
     char buf[name_.size() + 32];
     snprintf(buf, sizeof buf, "%s%d", name_.c_str(), i);
-    EventLoopThread* t = new EventLoopThread(cb, buf);
-    threads_.push_back(std::unique_ptr<EventLoopThread>(t));
-    loops_.push_back(t->startLoop());
+
+    // update. to be verified!
+    auto t = std::make_unique<EventLoopThread> (cb, string(buf));
+    loops_.emplace_back(t->startLoop());
+    threads_.emplace_back(std::move(t));
+    // EventLoopThread* t = new EventLoopThread(cb, buf);
+    // threads_.push_back(std::unique_ptr<EventLoopThread>(t));
+    // loops_.push_back(t->startLoop());
   }
   if (numThreads_ == 0 && cb)
   {

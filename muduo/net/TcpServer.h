@@ -99,12 +99,12 @@ class TcpServer : noncopyable
 
   typedef std::map<string, TcpConnectionPtr> ConnectionMap;
 
-  EventLoop* loop_;  // the acceptor loop
+  EventLoop* loop_;  // the acceptor loop 
   const string ipPort_;
   const string name_;
   std::unique_ptr<Acceptor> acceptor_; // avoid revealing Acceptor
   //
-  std::shared_ptr<EventLoopThreadPool> threadPool_;
+  std::shared_ptr<EventLoopThreadPool> threadPool_; 
 
   //这里的callback对象是传递给new出来的TcpConnection对象的！
   ConnectionCallback connectionCallback_;

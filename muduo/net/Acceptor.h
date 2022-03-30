@@ -35,6 +35,7 @@ class Acceptor : noncopyable
   Acceptor(EventLoop* loop, const InetAddress& listenAddr, bool reuseport);
   ~Acceptor();
 
+  // user pass the callback into Acceptor
   void setNewConnectionCallback(const NewConnectionCallback& cb)
   { newConnectionCallback_ = cb; }
 

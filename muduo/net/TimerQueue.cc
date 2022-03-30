@@ -65,6 +65,7 @@ void readTimerfd(int timerfd, Timestamp now)
   }
 }
 
+// this function sets the wakeup time of timerfd added into loop!
 void resetTimerfd(int timerfd, Timestamp expiration)
 {
   // wake up loop by timerfd_settime()
@@ -91,13 +92,15 @@ using namespace muduo::net::detail;
 TimerQueue::TimerQueue(EventLoop* loop)
   : loop_(loop),
     timerfd_(createTimerfd()),
-    timerfdChannel_(loop, timerfd_),
+    timerfdChannel_(loop, timerfd_), // timequeue use a channel to observe events on the timerfd_
     timers_(),
     callingExpiredTimers_(false)
 {
   timerfdChannel_.setReadCallback(
       std::bind(&TimerQueue::handleRead, this));
+
   // we are always reading the timerfd, we disarm it with timerfd_settime.
+  // enablingReading adds timerfd_ into the epoll eventloop and wait for events!
   timerfdChannel_.enableReading();
 }
 
@@ -118,6 +121,8 @@ TimerId TimerQueue::addTimer(TimerCallback cb,
                              double interval)
 {
   Timer* timer = new Timer(std::move(cb), when, interval);
+
+  // transfer the function call into the IO thread to provide the thread safety!
   loop_->runInLoop(
       std::bind(&TimerQueue::addTimerInLoop, this, timer));
   return TimerId(timer, timer->sequence());
@@ -129,11 +134,13 @@ void TimerQueue::cancel(TimerId timerId)
       std::bind(&TimerQueue::cancelInLoop, this, timerId));
 }
 
+// No matter which thread this function is called on, the code(especially the usage of object) is same as follows!
 void TimerQueue::addTimerInLoop(Timer* timer)
 {
   loop_->assertInLoopThread();
   bool earliestChanged = insert(timer);
 
+  // if this timer is the earliest timer among the timers_, then need to change the wakeup time of timerfd! 
   if (earliestChanged)
   {
     resetTimerfd(timerfd_, timer->expiration());
@@ -160,20 +167,21 @@ void TimerQueue::cancelInLoop(TimerId timerId)
   assert(timers_.size() == activeTimers_.size());
 }
 
+// when timerfd_ is readable, callback this!
 void TimerQueue::handleRead()
 {
   loop_->assertInLoopThread();
   Timestamp now(Timestamp::now());
   readTimerfd(timerfd_, now);
 
-  std::vector<Entry> expired = getExpired(now);
+  std::vector<Entry> expired = getExpired(now); //get all the prepared timers
 
   callingExpiredTimers_ = true;
   cancelingTimers_.clear();
   // safe to callback outside critical section
   for (const Entry& it : expired)
   {
-    it.second->run();
+    it.second->run(); // callback the users' function!
   }
   callingExpiredTimers_ = false;
 
@@ -184,16 +192,16 @@ std::vector<TimerQueue::Entry> TimerQueue::getExpired(Timestamp now)
 {
   assert(timers_.size() == activeTimers_.size());
   std::vector<Entry> expired;
-  Entry sentry(now, reinterpret_cast<Timer*>(UINTPTR_MAX));
-  TimerList::iterator end = timers_.lower_bound(sentry);
+  Entry sentry(now, reinterpret_cast<Timer*>(UINTPTR_MAX));//set sentry according now!
+  TimerList::iterator end = timers_.lower_bound(sentry);// find end 
   assert(end == timers_.end() || now < end->first);
-  std::copy(timers_.begin(), end, back_inserter(expired));
-  timers_.erase(timers_.begin(), end);
+  std::copy(timers_.begin(), end, back_inserter(expired)); // first copy these expired timers
+  timers_.erase(timers_.begin(), end); // then delete them from timers_, ensuring the thread safety!
 
   for (const Entry& it : expired)
   {
     ActiveTimer timer(it.second, it.second->sequence());
-    size_t n = activeTimers_.erase(timer);
+    size_t n = activeTimers_.erase(timer); // then delete them from activeTimers_
     assert(n == 1); (void)n;
   }
 
@@ -232,6 +240,7 @@ void TimerQueue::reset(const std::vector<Entry>& expired, Timestamp now)
   }
 }
 
+// insert timer into timers_ and activeTimers_
 bool TimerQueue::insert(Timer* timer)
 {
   loop_->assertInLoopThread();

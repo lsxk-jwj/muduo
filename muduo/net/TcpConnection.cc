@@ -44,12 +44,17 @@ TcpConnection::TcpConnection(EventLoop* loop,
     name_(nameArg),
     state_(kConnecting),
     reading_(true),
+
+    // TcpConnection like the acceptor: use one socketfd and one channel to handle the client data!
+    // usually, there are many TcpConnections to be constructed by TcpServer!
     socket_(new Socket(sockfd)),
     channel_(new Channel(loop, sockfd)),
+
     localAddr_(localAddr),
     peerAddr_(peerAddr),
     highWaterMark_(64*1024*1024)
 {
+  // channel_ and tcpConnection are connected by these callbacks!
   channel_->setReadCallback(
       std::bind(&TcpConnection::handleRead, this, _1));
   channel_->setWriteCallback(
@@ -65,6 +70,7 @@ TcpConnection::TcpConnection(EventLoop* loop,
 
 TcpConnection::~TcpConnection()
 {
+  // use the smarter pointer, destructor doesn't need to delete the pointer!
   LOG_DEBUG << "TcpConnection::dtor[" <<  name_ << "] at " << this
             << " fd=" << channel_->fd()
             << " state=" << stateToString();
@@ -163,7 +169,7 @@ void TcpConnection::sendInLoop(const StringPiece& message)
   sendInLoop(message.data(), message.size());
 }
 
-//很重要的设计，非阻塞式的发送数据！
+//很重要的设计，非阻塞式的发送数据！complex
 void TcpConnection::sendInLoop(const void* data, size_t len)
 {
   loop_->assertInLoopThread();
@@ -175,6 +181,7 @@ void TcpConnection::sendInLoop(const void* data, size_t len)
     LOG_WARN << "disconnected, give up writing";
     return;
   }
+
   // if no thing in output queue, try writing directly
   if (!channel_->isWriting() && outputBuffer_.readableBytes() == 0)
   {
@@ -182,6 +189,7 @@ void TcpConnection::sendInLoop(const void* data, size_t len)
     if (nwrote >= 0)
     {
       remaining = len - nwrote;
+      // send all the data one time!
       if (remaining == 0 && writeCompleteCallback_)
       {
         loop_->queueInLoop(std::bind(writeCompleteCallback_, shared_from_this()));
@@ -201,6 +209,7 @@ void TcpConnection::sendInLoop(const void* data, size_t len)
     }
   }
 
+  // still remain some data!
   assert(remaining <= len);
   if (!faultError && remaining > 0)
   {
@@ -211,9 +220,11 @@ void TcpConnection::sendInLoop(const void* data, size_t len)
     {
       loop_->queueInLoop(std::bind(highWaterMarkCallback_, shared_from_this(), oldLen + remaining));
     }
+    // append the remain data into outputBuffer_
     outputBuffer_.append(static_cast<const char*>(data)+nwrote, remaining);
     if (!channel_->isWriting())
     {
+      // only into this if{}, channel_ will enable Writing and epoll will obeserve the writable events, which is different from readable events.
       channel_->enableWriting();
     }
   }
@@ -357,6 +368,7 @@ void TcpConnection::connectEstablished()
   channel_->tie(shared_from_this());
   channel_->enableReading();
 
+  // real callback
   connectionCallback_(shared_from_this());
 }
 
@@ -407,6 +419,7 @@ void TcpConnection::handleWrite()
       outputBuffer_.retrieve(n);
       if (outputBuffer_.readableBytes() == 0)
       {
+        // data has all sent to peer, epoll will not keep an eye on the writable events!
         channel_->disableWriting();
         if (writeCompleteCallback_)
         {
@@ -445,8 +458,10 @@ void TcpConnection::handleClose()
   channel_->disableAll();
 
   TcpConnectionPtr guardThis(shared_from_this());
+
   //由网络库发起的回调函数就是这样的，connectionCallback_就是用户定义的回调函数！
   connectionCallback_(guardThis);
+
   // must be the last line
   closeCallback_(guardThis);
 }

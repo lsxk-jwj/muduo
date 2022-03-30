@@ -26,16 +26,20 @@ TcpServer::TcpServer(EventLoop* loop,
   : loop_(CHECK_NOTNULL(loop)),
     ipPort_(listenAddr.toIpPort()),
     name_(nameArg),
+
     acceptor_(new Acceptor(loop, listenAddr, option == kReusePort)),
     threadPool_(new EventLoopThreadPool(loop, name_)),
+
     connectionCallback_(defaultConnectionCallback),
     messageCallback_(defaultMessageCallback),
     nextConnId_(1)
 {
+  // call chains as follows:
   acceptor_->setNewConnectionCallback(
       std::bind(&TcpServer::newConnection, this, _1, _2));
 }
 
+// close all the connection and destroy
 TcpServer::~TcpServer()
 {
   loop_->assertInLoopThread();
@@ -56,6 +60,7 @@ void TcpServer::setThreadNum(int numThreads)
   threadPool_->setThreadNum(numThreads);
 }
 
+// starting listening!
 void TcpServer::start()
 {
   if (started_.getAndSet(1) == 0)
@@ -68,11 +73,12 @@ void TcpServer::start()
   }
 }
 
+// called by acceptor::HandleRead()
 void TcpServer::newConnection(int sockfd, const InetAddress& peerAddr)
 {
   loop_->assertInLoopThread();
   
-  //创建了一个新的ioLoop
+  //get a ioLoop from threadPool_ to construct a new Tcpconnection,
   EventLoop* ioLoop = threadPool_->getNextLoop();
   char buf[64];
   snprintf(buf, sizeof buf, "-%s#%d", ipPort_.c_str(), nextConnId_);
@@ -86,12 +92,19 @@ void TcpServer::newConnection(int sockfd, const InetAddress& peerAddr)
   // FIXME poll with zero timeout to double confirm the new connection
   // FIXME use make_shared if necessary
 
-  // 创建了一个新的TcpConnection对象，并将其放在map里进行管理
-  TcpConnectionPtr conn(new TcpConnection(ioLoop,
+
+  // TcpConnectionPtr conn(new TcpConnection(ioLoop,
+  //                                         connName,
+  //                                         sockfd,
+  //                                         localAddr,
+  //                                         peerAddr));
+
+  // 创建了一个新的TcpConnection对象，并将其放在map里进行管理, connName as the key!
+  auto conn = std::make_shared<TcpConnection> (ioLoop,
                                           connName,
                                           sockfd,
                                           localAddr,
-                                          peerAddr));
+                                          peerAddr);
   connections_[connName] = conn;
   
   //把用户自定义的connectionCallback函数传递给此TcpConnection对象，保存在它的成员中，以供后续条件满足时被TcpConnection::some_function调用，这就实现了回调！
@@ -100,6 +113,8 @@ void TcpServer::newConnection(int sockfd, const InetAddress& peerAddr)
   conn->setWriteCompleteCallback(writeCompleteCallback_);
   conn->setCloseCallback(
       std::bind(&TcpServer::removeConnection, this, _1)); // FIXME: unsafe
+
+  //callback the real user's functions!    
   ioLoop->runInLoop(std::bind(&TcpConnection::connectEstablished, conn));
 }
 

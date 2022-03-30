@@ -393,7 +393,7 @@ class Buffer : public muduo::copyable
   {
     if (writableBytes() + prependableBytes() < len + kCheapPrepend)
     {
-      // FIXME: move readable data
+      // FIXME: move readable data, use vector::resize() to realloctor!
       buffer_.resize(writerIndex_+len);
     }
     else
@@ -412,6 +412,7 @@ class Buffer : public muduo::copyable
 
  private:
   std::vector<char> buffer_;
+
   //这两个位置都是整数下标而不是指针，因为buffer_会因为重新分配内存位置而导致指针失效！
   //这两个位置都是相对于buffer::begin()的相对位置。
   size_t readerIndex_;

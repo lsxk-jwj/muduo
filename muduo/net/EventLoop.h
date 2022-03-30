@@ -139,6 +139,7 @@ class EventLoop : noncopyable
 
   typedef std::vector<Channel*> ChannelList;
 
+  // all the flag(bool) is necessary!
   bool looping_; /* atomic */
   std::atomic<bool> quit_;
   bool eventHandling_; /* atomic */

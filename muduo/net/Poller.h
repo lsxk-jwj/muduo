@@ -61,7 +61,7 @@ class Poller : noncopyable
   }
 
  protected:
-  // 但poller并不拥有channel，即channel对象的生命期由他人负责，这也是指针应用的场景之一！
+  // poller manage channels, 但poller并不拥有channel，即channel对象的生命期由他人负责，这也是指针应用的场景之一！
   typedef std::map<int, Channel*> ChannelMap;
   ChannelMap channels_;
 

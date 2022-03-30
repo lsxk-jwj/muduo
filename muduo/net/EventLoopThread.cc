@@ -17,7 +17,7 @@ EventLoopThread::EventLoopThread(const ThreadInitCallback& cb,
                                  const string& name)
   : loop_(NULL),
     exiting_(false),
-    thread_(std::bind(&EventLoopThread::threadFunc, this), name),
+    thread_(std::bind(&EventLoopThread::threadFunc, this), name), // construct the thread object, has not start a new thread!
     mutex_(),
     cond_(mutex_),
     callback_(cb)
@@ -39,11 +39,15 @@ EventLoopThread::~EventLoopThread()
 EventLoop* EventLoopThread::startLoop()
 {
   assert(!thread_.started());
-  thread_.start();
+  thread_.start();// start a new thread to run the threadFunc(a loop), will not block this thread!
 
   EventLoop* loop = NULL;
   {
     MutexLockGuard lock(mutex_);
+    
+    // cond_ has to be wait first, then cond_ notify() can wake up itself.
+    // Thus, if startLoop() in main thread runs fast, program will going into the while loop and cond_ will wait
+    //  if threadFunc in another thread run fast, program will not go into the while loop! 
     while (loop_ == NULL)
     {
       cond_.wait();
@@ -54,6 +58,7 @@ EventLoop* EventLoopThread::startLoop()
   return loop;
 }
 
+// a new thread to run this function
 void EventLoopThread::threadFunc()
 {
   EventLoop loop;

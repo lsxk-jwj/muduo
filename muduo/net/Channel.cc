@@ -50,6 +50,7 @@ void Channel::tie(const std::shared_ptr<void>& obj)
   tied_ = true;
 }
 
+// call chains: channel.update() -> eventloop->update() -> poller.update()!!!
 void Channel::update()
 {
   addedToLoop_ = true;
@@ -63,7 +64,7 @@ void Channel::remove()
   loop_->removeChannel(this);
 }
 
-
+//handle active events
 void Channel::handleEvent(Timestamp receiveTime)
 {
   std::shared_ptr<void> guard;
@@ -81,7 +82,7 @@ void Channel::handleEvent(Timestamp receiveTime)
   }
 }
 
-// 是核心函数: call the callbacks 
+// 核心函数: call the callbacks 
 void Channel::handleEventWithGuard(Timestamp receiveTime)
 {
   eventHandling_ = true;

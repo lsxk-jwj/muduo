@@ -22,6 +22,9 @@ namespace net
 
 class EventLoop;
 
+// eventLoop object don't have to be constructed in main thread, 
+// eventLoopThread start a new thread to construct eventLoop and loop() : RAII  
+
 class EventLoopThread : noncopyable
 {
  public:

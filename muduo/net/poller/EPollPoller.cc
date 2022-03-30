@@ -112,7 +112,7 @@ void EPollPoller::fillActiveChannels(int numEvents,
   }
 }
 
-// undate the manage container: channels_, including add and modify and delete
+// update the managed container: channels_, including add and modify and delete events of channel!
 void EPollPoller::updateChannel(Channel* channel)
 {
   Poller::assertInLoopThread();
@@ -178,6 +178,7 @@ void EPollPoller::removeChannel(Channel* channel)
   channel->set_index(kNew);
 }
 
+// abstract epoll_ctl codes to form this function!
 void EPollPoller::update(int operation, Channel* channel)
 {
   struct epoll_event event;
@@ -187,6 +188,8 @@ void EPollPoller::update(int operation, Channel* channel)
   int fd = channel->fd();
   LOG_TRACE << "epoll_ctl op = " << operationToString(operation)
     << " fd = " << fd << " event = { " << channel->eventsToString() << " }";
+
+  //epoll_ctl is here!
   if (::epoll_ctl(epollfd_, operation, fd, &event) < 0)
   {
     if (operation == EPOLL_CTL_DEL)

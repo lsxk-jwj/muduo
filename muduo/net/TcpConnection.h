@@ -144,13 +144,16 @@ class TcpConnection : noncopyable,
   // 每个Tcpconnection管理的socket和channel
   std::unique_ptr<Socket> socket_;
   std::unique_ptr<Channel> channel_;
+
   const InetAddress localAddr_;
   const InetAddress peerAddr_;
+
   ConnectionCallback connectionCallback_;
   MessageCallback messageCallback_;
   WriteCompleteCallback writeCompleteCallback_;
   HighWaterMarkCallback highWaterMarkCallback_;
   CloseCallback closeCallback_;
+  
   size_t highWaterMark_;
   Buffer inputBuffer_;
   Buffer outputBuffer_; // FIXME: use list<Buffer> as output buffer.
