@@ -110,17 +110,17 @@ TimerQueue::~TimerQueue()
   timerfdChannel_.remove();
   ::close(timerfd_);
   // do not remove channel, since we're in EventLoop::dtor();
-  for (const Entry& timer : timers_)
-  {
-    delete timer.second;
-  }
+  //for (const Entry& timer : timers_)
+  // {
+  //   delete timer.second;
+  // }
 }
 
 TimerId TimerQueue::addTimer(TimerCallback cb,
                              Timestamp when,
                              double interval)
 {
-  Timer* timer = new Timer(std::move(cb), when, interval);
+  auto timer = std::make_shared<Timer> (std::move(cb), when, interval);
 
   // transfer the function call into the IO thread to provide the thread safety!
   loop_->runInLoop(
@@ -135,7 +135,7 @@ void TimerQueue::cancel(TimerId timerId)
 }
 
 // No matter which thread this function is called on, the code(especially the usage of object) is same as follows!
-void TimerQueue::addTimerInLoop(Timer* timer)
+void TimerQueue::addTimerInLoop(std::shared_ptr<Timer> timer)
 {
   loop_->assertInLoopThread();
   bool earliestChanged = insert(timer);
@@ -151,13 +151,15 @@ void TimerQueue::cancelInLoop(TimerId timerId)
 {
   loop_->assertInLoopThread();
   assert(timers_.size() == activeTimers_.size());
+
   ActiveTimer timer(timerId.timer_, timerId.sequence_);
   ActiveTimerSet::iterator it = activeTimers_.find(timer);
   if (it != activeTimers_.end())
   {
-    size_t n = timers_.erase(Entry(it->first->expiration(), it->first));
-    assert(n == 1); (void)n;
-    delete it->first; // FIXME: no delete please
+    size_t n = timers_.erase(Entry(it->first->expiration(), it->first)); /// to be verified!!!
+    assert(n == 1); (void)n; 
+    
+    //delete it->first; // FIXME: no delete please
     activeTimers_.erase(it);
   }
   else if (callingExpiredTimers_)
@@ -192,7 +194,10 @@ std::vector<TimerQueue::Entry> TimerQueue::getExpired(Timestamp now)
 {
   assert(timers_.size() == activeTimers_.size());
   std::vector<Entry> expired;
-  Entry sentry(now, reinterpret_cast<Timer*>(UINTPTR_MAX));//set sentry according now!
+
+  // segment fault FIXED!!!
+  Entry sentry(now, std::make_shared<Timer>(TimerCallback(), muduo::Timestamp(UINTPTR_MAX), -1.0));//set sentry according now!
+
   TimerList::iterator end = timers_.lower_bound(sentry);// find end 
   assert(end == timers_.end() || now < end->first);
   std::copy(timers_.begin(), end, back_inserter(expired)); // first copy these expired timers
@@ -225,7 +230,7 @@ void TimerQueue::reset(const std::vector<Entry>& expired, Timestamp now)
     else
     {
       // FIXME move to a free list
-      delete it.second; // FIXME: no delete please
+      //delete it.second; // FIXME: no delete please
     }
   }
 
@@ -241,7 +246,7 @@ void TimerQueue::reset(const std::vector<Entry>& expired, Timestamp now)
 }
 
 // insert timer into timers_ and activeTimers_
-bool TimerQueue::insert(Timer* timer)
+bool TimerQueue::insert(std::shared_ptr<Timer> timer)
 {
   loop_->assertInLoopThread();
   assert(timers_.size() == activeTimers_.size());

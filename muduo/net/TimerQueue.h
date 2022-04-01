@@ -8,6 +8,9 @@
 //
 // This is an internal header file, you should not include this.
 
+// changed by jingweijie
+// 將原生指針改成std::shared_ptr, 出現段錯誤。segment fault already fixed!
+
 #ifndef MUDUO_NET_TIMERQUEUE_H
 #define MUDUO_NET_TIMERQUEUE_H
 
@@ -29,7 +32,7 @@ class EventLoop;
 class Timer;
 class TimerId;
 
-///
+/// 
 /// A best efforts timer queue.
 /// No guarantee that the callback will be on time.
 ///
@@ -56,13 +59,13 @@ class TimerQueue : noncopyable
   // FIXME: use unique_ptr<Timer> instead of raw pointers.
   // This requires heterogeneous comparison lookup (N3465) from C++14
   // so that we can find an T* in a set<unique_ptr<T>>.
-  typedef std::pair<Timestamp, Timer*> Entry;
+  typedef std::pair<Timestamp, std::shared_ptr<Timer>> Entry;
   typedef std::set<Entry> TimerList;
-  
-  typedef std::pair<Timer*, int64_t> ActiveTimer;
+
+  typedef std::pair<std::shared_ptr<Timer>, int64_t> ActiveTimer;
   typedef std::set<ActiveTimer> ActiveTimerSet;
 
-  void addTimerInLoop(Timer* timer);
+  void addTimerInLoop(std::shared_ptr<Timer> timer);
 
   void cancelInLoop(TimerId timerId);
 
@@ -74,7 +77,7 @@ class TimerQueue : noncopyable
   
   void reset(const std::vector<Entry>& expired, Timestamp now);
 
-  bool insert(Timer* timer);
+  bool insert(std::shared_ptr<Timer> timer);
 
   EventLoop* loop_;
   const int timerfd_; // one timequeue has only one timerfd_

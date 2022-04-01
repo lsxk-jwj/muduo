@@ -27,12 +27,12 @@ class TimerId : public muduo::copyable
 {
  public:
   TimerId()
-    : timer_(NULL),
+    : timer_(nullptr),
       sequence_(0)
   {
   }
 
-  TimerId(Timer* timer, int64_t seq)
+  TimerId(std::shared_ptr<Timer> timer, int64_t seq)
     : timer_(timer),
       sequence_(seq)
   {
@@ -40,10 +40,14 @@ class TimerId : public muduo::copyable
 
   // default copy-ctor, dtor and assignment are okay
 
+  TimerId(const TimerId& ) = default;
+  ~TimerId() = default;
+  TimerId& operator= (const TimerId& ) = default; 
+
   friend class TimerQueue;
 
  private:
-  Timer* timer_;
+  std::shared_ptr<Timer> timer_;
   int64_t sequence_;
 };
 

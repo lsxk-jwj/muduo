@@ -20,9 +20,9 @@ namespace muduo
 namespace net
 {
 
-///
+/// 
 /// Internal class for timer event.
-///
+/// 
 class Timer : noncopyable
 {
  public:
@@ -33,6 +33,8 @@ class Timer : noncopyable
       repeat_(interval > 0.0),
       sequence_(s_numCreated_.incrementAndGet())
   { }
+
+  ~Timer() = default; // to be verified!!!
 
   void run() const
   {
